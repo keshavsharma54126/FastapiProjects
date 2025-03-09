@@ -1,12 +1,13 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-
+from sqlalchemy.orm import Session
 from fastapi.templating import Jinja2Templates
 import schemas
 import crud
 import models
 from database import SessionLocal, engine
+from utils import perform_translation
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -38,11 +39,11 @@ def index(request: Request):
 
 
 @app.post("/translate", response_model=schemas.TaskResponse)
-def translate(request: schemas.TranslationRequest):
+def translate(request: schemas.TranslationRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     task = crud.create_translation_task(
-        get_db.db, request.text, request.language)
+        db, request.text, request.language)
 
     background_tasks.add_task(
-        perform_translation, task.id, request.text, request.language, get_db.db)
+        perform_translation, task.id, request.text, request.language, db)
 
     return
